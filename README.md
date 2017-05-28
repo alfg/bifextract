@@ -30,6 +30,7 @@ This will parse `gladiator.bif`, create the `gladiator` directory and write the 
     ├─ ... 
     └─ frame_n-1.jpg
     └─ frame_n.jpg
+```
 
 ## Develop
 
