@@ -11,11 +11,20 @@ import (
 	"strings"
 )
 
-const file = "gladiator.bif"
-const version = "0.1.0"
-const outputDir = "./test"
-const output = "./test/test"
+const (
+	usage = `
+Usage:
+	bifextract <file-path|url> <output-dir>
+`
+	version = "0.1.0"
+)
 
+var (
+	file      string
+	outputDir string
+)
+
+// BIF represents BIF file data.
 type BIF struct {
 	FileType            string
 	Version             int
@@ -24,31 +33,55 @@ type BIF struct {
 	Frames              []Frame
 }
 
+// Frame represents each frame in BIF.
 type Frame struct {
 	Timestamp uint32
 	Offset    uint32
 }
 
+// Initialize and parse flags/arguments
+func init() {
+	if len(os.Args[1:]) < 1 {
+		fmt.Println("Please provide a BIF path or URL.")
+		fmt.Println(usage)
+		os.Exit(1)
+	}
+
+	// isHTTP := strings.HasPrefix(os.Args[len(os.Args)-1], "http")
+}
+
 func main() {
+	args := os.Args[1:]
 
-	fmt.Printf("bifparser - %s\n", version)
+	option := args[0]
+	if option == "version" {
+		fmt.Printf("Version: %s\n", version)
+	} else {
+		file = option
+		outputDir = args[1]
+		extractBIF()
+	}
+}
 
+func extractBIF() {
+
+	// Open file.
 	f, err := os.Open(file)
 	if err != nil {
 		panic(err)
 	}
 
+	// Create output dir.
 	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
 		os.Mkdir(outputDir, os.ModePerm)
 	}
 
 	// Type
-	bif := isBIF(f)
-	fmt.Printf("is BIF?: %t\n", bif)
+	checkBIF(f)
 
 	// Version
 	v := getVersion(f)
-	fmt.Printf("Version: %d\n", v)
+	fmt.Printf("BIF Version: %d\n", v)
 
 	// Frame Count
 	fc := getFramesCount(f)
@@ -72,11 +105,13 @@ func main() {
 		byteIndex += 8 // Next frame every 8 bytes.
 	}
 
+	// Generate frame images to output dir.
+	fmt.Printf("Generating %d frames...\n", len(frames))
 	for k, v := range frames {
 		var nextOffset uint32
 		if k == len(frames)-1 {
 			// nextOffset = frames[len(frames)-1].Offset
-			fmt.Println("end")
+			fmt.Println("Finished.")
 		} else {
 			nextOffset = frames[k+1].Offset
 
@@ -90,14 +125,18 @@ func main() {
 	f.Close()
 }
 
-func isBIF(f *os.File) bool {
+func checkBIF(f *os.File) {
 	b := make([]byte, 8)
 	_, err := f.Read(b)
 	if err != nil {
 		panic(err)
 	}
 	magic := string(b)
-	return strings.Contains(magic, "BIF")
+	isBIF := strings.Contains(magic, "BIF")
+	if !isBIF {
+		fmt.Println("Invalid BIF file.")
+		os.Exit(1)
+	}
 }
 
 func getVersion(f *os.File) uint32 {
@@ -159,7 +198,7 @@ func createFrameImage(f *os.File, i int, offset int64, len int) {
 	b := make([]byte, len)
 	f.Read(b)
 
-	filename := fmt.Sprintf("%s_%s.jpg", output, strconv.Itoa(i))
+	filename := fmt.Sprintf("%s/frame_%s.jpg", outputDir, strconv.Itoa(i))
 	err := ioutil.WriteFile(filename, b, 0644)
 	if err != nil {
 		panic(err)
