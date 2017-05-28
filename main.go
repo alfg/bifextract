@@ -1,3 +1,4 @@
+// bifextract - CLI utility for extracting images from a BIF file.
 // https://sdkdocs.roku.com/display/sdkdoc/Trick+Mode+Support
 package main
 
@@ -26,11 +27,7 @@ var (
 
 // BIF represents BIF file data.
 type BIF struct {
-	FileType            string
-	Version             int
-	FrameCount          int
-	FramewiseSeparation int
-	Frames              []Frame
+	File *os.File
 }
 
 // Frame represents each frame in BIF.
@@ -76,19 +73,19 @@ func extractBIF() {
 		os.Mkdir(outputDir, os.ModePerm)
 	}
 
-	// Type
-	checkBIF(f)
+	// Load BIF instance.
+	bif, _ := NewBIF(f)
 
 	// Version
-	v := getVersion(f)
+	v := bif.getVersion()
 	fmt.Printf("BIF Version: %d\n", v)
 
 	// Frame Count
-	fc := getFramesCount(f)
+	fc := bif.getFramesCount()
 	fmt.Printf("Number of frames: %d\n", fc)
 
 	// Framewise Separation
-	fs := getFramewiseSeparation(f)
+	fs := bif.getFramewiseSeparation()
 	fmt.Printf("Framewise Separation: %d ms\n", fs)
 
 	// Get frames
@@ -96,7 +93,7 @@ func extractBIF() {
 	var frames []Frame
 
 	for i := 0; i < fc; i++ {
-		ts, offset := readFrame(f, byteIndex)
+		ts, offset := bif.readFrame(byteIndex)
 		frame := Frame{
 			Timestamp: ts * fs,
 			Offset:    offset,
@@ -119,10 +116,20 @@ func extractBIF() {
 			frameLen := nextOffset - v.Offset
 
 			// Create image.
-			createFrameImage(f, k, int64(v.Offset), int(frameLen))
+			bif.createFrameImage(k, int64(v.Offset), int(frameLen))
 		}
 	}
 	f.Close()
+}
+
+// NewBIF Creates a BIF instance.
+func NewBIF(f *os.File) (*BIF, error) {
+	// Validate filetype
+	checkBIF(f)
+
+	return &BIF{
+		File: f,
+	}, nil
 }
 
 func checkBIF(f *os.File) {
@@ -139,44 +146,48 @@ func checkBIF(f *os.File) {
 	}
 }
 
-func getVersion(f *os.File) uint32 {
+func (b *BIF) getVersion() uint32 {
+	f := b.File
 	f.Seek(8, 0)
-	b := make([]byte, 4)
-	_, err := f.Read(b)
+	buf := make([]byte, 4)
+	_, err := f.Read(buf)
 	if err != nil {
 		panic(err)
 	}
-	version := binary.LittleEndian.Uint32(b)
+	version := binary.LittleEndian.Uint32(buf)
 	return version
 }
 
-func getFramesCount(f *os.File) int {
+func (b *BIF) getFramesCount() int {
+	f := b.File
 	f.Seek(12, 0)
-	b := make([]byte, 4)
-	_, err := f.Read(b)
+	buf := make([]byte, 4)
+	_, err := f.Read(buf)
 	if err != nil {
 		panic(err)
 	}
-	numFrames := binary.LittleEndian.Uint32(b)
+	numFrames := binary.LittleEndian.Uint32(buf)
 	return int(numFrames)
 }
 
-func getFramewiseSeparation(f *os.File) uint32 {
+func (b *BIF) getFramewiseSeparation() uint32 {
+	f := b.File
 	f.Seek(16, 0)
-	b := make([]byte, 4)
-	_, err := f.Read(b)
+	buf := make([]byte, 4)
+	_, err := f.Read(buf)
 	if err != nil {
 		panic(err)
 	}
-	framewiseSeparation := binary.LittleEndian.Uint32(b)
+	framewiseSeparation := binary.LittleEndian.Uint32(buf)
 	return framewiseSeparation
 }
 
-func readFrame(f *os.File, offset int64) (uint32, uint32) {
+func (b *BIF) readFrame(offset int64) (uint32, uint32) {
+	f := b.File
 	f.Seek(offset, 0)
-	b := make([]byte, 4)
-	f.Read(b)
-	frameTimestamp := binary.LittleEndian.Uint32(b)
+	buf := make([]byte, 4)
+	f.Read(buf)
+	frameTimestamp := binary.LittleEndian.Uint32(buf)
 
 	f.Seek(offset+4, 0)
 	b2 := make([]byte, 4)
@@ -185,21 +196,23 @@ func readFrame(f *os.File, offset int64) (uint32, uint32) {
 	return frameTimestamp, frameOffset
 }
 
-func getFrameImage(f *os.File, offset int64, len int) string {
+func (b *BIF) getFrameImage(offset int64, len int) string {
+	f := b.File
 	f.Seek(offset, 0)
-	b := make([]byte, len)
-	f.Read(b)
-	enc := base64.StdEncoding.EncodeToString(b)
+	buf := make([]byte, len)
+	f.Read(buf)
+	enc := base64.StdEncoding.EncodeToString(buf)
 	return enc
 }
 
-func createFrameImage(f *os.File, i int, offset int64, len int) {
+func (b *BIF) createFrameImage(i int, offset int64, len int) {
+	f := b.File
 	f.Seek(offset, 0)
-	b := make([]byte, len)
-	f.Read(b)
+	buf := make([]byte, len)
+	f.Read(buf)
 
 	filename := fmt.Sprintf("%s/frame_%s.jpg", outputDir, strconv.Itoa(i))
-	err := ioutil.WriteFile(filename, b, 0644)
+	err := ioutil.WriteFile(filename, buf, 0644)
 	if err != nil {
 		panic(err)
 	}
