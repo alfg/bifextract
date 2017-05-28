@@ -44,6 +44,7 @@ func init() {
 		os.Exit(1)
 	}
 
+	// TODO: Support URL paths.
 	// isHTTP := strings.HasPrefix(os.Args[len(os.Args)-1], "http")
 }
 
