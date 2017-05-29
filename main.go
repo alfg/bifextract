@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -126,25 +127,30 @@ func extractBIF() {
 // NewBIF Creates a BIF instance.
 func NewBIF(f *os.File) (*BIF, error) {
 	// Validate filetype
-	checkBIF(f)
+	err := checkBIF(f)
+	if err != nil {
+		return &BIF{
+			File: f,
+		}, err
+	}
 
 	return &BIF{
 		File: f,
 	}, nil
 }
 
-func checkBIF(f *os.File) {
+func checkBIF(f *os.File) error {
 	b := make([]byte, 8)
-	_, err := f.Read(b)
+	_, err := f.ReadAt(b, 0)
 	if err != nil {
 		panic(err)
 	}
 	magic := string(b)
 	isBIF := strings.Contains(magic, "BIF")
 	if !isBIF {
-		fmt.Println("Invalid BIF file.")
-		os.Exit(1)
+		return errors.New("invalid BIF file")
 	}
+	return nil
 }
 
 func (b *BIF) getVersion() uint32 {
