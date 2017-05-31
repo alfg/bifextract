@@ -70,11 +70,6 @@ func extractBIF() {
 		panic(err)
 	}
 
-	// Create output dir.
-	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
-		os.Mkdir(outputDir, os.ModePerm)
-	}
-
 	// Load BIF instance.
 	bif, _ := NewBIF(f)
 
@@ -118,7 +113,7 @@ func extractBIF() {
 			frameLen := nextOffset - v.Offset
 
 			// Create image.
-			bif.createFrameImage(k, int64(v.Offset), int(frameLen))
+			bif.createFrameImage(k, int64(v.Offset), int(frameLen), outputDir)
 		}
 	}
 	f.Close()
@@ -212,13 +207,19 @@ func (b *BIF) getFrameImage(offset int64, len int) string {
 	return enc
 }
 
-func (b *BIF) createFrameImage(i int, offset int64, len int) {
+func (b *BIF) createFrameImage(i int, offset int64, len int, out string) {
+
+	// Create output dir.
+	if _, err := os.Stat(out); os.IsNotExist(err) {
+		os.Mkdir(out, os.ModePerm)
+	}
+
 	f := b.File
 	f.Seek(offset, 0)
 	buf := make([]byte, len)
 	f.Read(buf)
 
-	filename := fmt.Sprintf("%s/frame_%s.jpg", outputDir, strconv.Itoa(i))
+	filename := fmt.Sprintf("%s/frame_%s.jpg", out, strconv.Itoa(i))
 	err := ioutil.WriteFile(filename, buf, 0644)
 	if err != nil {
 		panic(err)
