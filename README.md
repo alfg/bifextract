@@ -1,4 +1,5 @@
-# bifextract [![Build Status](https://travis-ci.org/alfg/bifextract.svg?branch=master)](https://travis-ci.org/alfg/bifextract)
+# bifextract [![Build Status](https://travis-ci.org/alfg/bifextract.svg?branch=master)](https://travis-ci.org/alfg/bifextract) [![Build status](https://ci.appveyor.com/api/projects/status/w95tgymvxsmyh7ri?svg=true)](https://ci.appveyor.com/project/alfg/bifextract)
+
 `bifextract` is a CLI utility for extracting images from a [BIF](https://sdkdocs.roku.com/display/sdkdoc/Trick+Mode+Support) file.
 
 ## Install from Source
